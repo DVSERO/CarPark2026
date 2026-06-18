@@ -1,0 +1,69 @@
+import jsonServer from 'json-server'
+import multer from 'multer'
+import path from 'path'
+import fs from 'fs'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const PORT = process.env.PORT || 3001
+const IMG_DIR = path.join(__dirname, 'images')
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    fs.mkdirSync(IMG_DIR, { recursive: true })
+    cb(null, IMG_DIR)
+  },
+  filename: (_req, file, cb) => {
+    cb(null, path.basename(file.originalname))
+  },
+})
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    cb(null, file.mimetype.startsWith('image/'))
+  },
+})
+
+const server = jsonServer.create()
+const router = jsonServer.router(path.join(__dirname, 'db.jsonc'))
+const middlewares = jsonServer.defaults()
+
+router.db._.id = 'vin'
+
+server.use(middlewares)
+
+// Serve car images from /api/images/<filename>
+server.get('/api/images/:file', (req, res) => {
+  const filePath = path.join(__dirname, 'images', req.params.file)
+  if (!fs.existsSync(filePath)) {
+    return res.sendStatus(404)
+  }
+  res.sendFile(filePath)
+})
+
+// Upload a car image to /api/images (multipart/form-data, field name "image")
+server.post('/api/images', upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'An image file is required (field name "image")' })
+  }
+
+  res.status(201).json({
+    fileName: req.file.filename,
+    url: `/api/images/${req.file.filename}`,
+  })
+})
+
+server.use(
+  jsonServer.rewriter({
+    '/api/images/:file': '/api/images/:file',
+    '/api/*': '/$1',
+  })
+)
+
+server.use(router)
+
+server.listen(PORT, () => {
+  console.log(`JSON Server running on http://localhost:${PORT}`)
+})
