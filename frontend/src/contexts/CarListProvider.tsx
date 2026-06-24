@@ -13,7 +13,7 @@ export function CarListProvider({ children }: PropsWithChildren) {
     const [totalPages, setTotalPages] = useState<number>(0)
     const [total, setTotal] = useState<number>(0)
 
-    const { filters, page, limit } = useFilters()
+    const { filters, page, limit, sort, order } = useFilters()
 
     const [isError, setIsError] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
@@ -26,7 +26,9 @@ export function CarListProvider({ children }: PropsWithChildren) {
             const params: GetCarsParams = {
                 // filters: filters,
                 page: page,
-                limit: limit
+                limit: limit,
+                sort: sort,
+                order: order
             }
 
             const { items, total, totalPages } = await getCars(params)
@@ -44,7 +46,7 @@ export function CarListProvider({ children }: PropsWithChildren) {
 
     useEffect(() => {
         getCarList()
-    }, [filters, page, limit])
+    }, [filters, page, limit, sort, order])
 
     const context: CarListContextType = {
         carsList,
